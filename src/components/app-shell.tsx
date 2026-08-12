@@ -18,6 +18,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  ScrollText,
 } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ type NavItemDef = { href: string; label: string; icon: React.ElementType };
 // Overview stands alone, then the two working areas are labelled.
 const NAV_GROUPS: {
   label: string | null;
+  adminOnly?: boolean;
   items: { href: string; label: string; icon: React.ElementType }[];
 }[] = [
   { label: null, items: [{ href: "/", label: "Overview", icon: LayoutDashboard }] },
@@ -57,6 +59,11 @@ const NAV_GROUPS: {
       { href: "/payouts", label: "Vendor Payouts", icon: Wallet },
       { href: "/reports/zone-commission", label: "Zone Commission", icon: PieChart },
     ],
+  },
+  {
+    label: "System",
+    adminOnly: true,
+    items: [{ href: "/logs", label: "System Logs", icon: ScrollText }],
   },
 ];
 
@@ -132,6 +139,7 @@ function SidebarNav({
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const visibleGroups = NAV_GROUPS.filter((g) => !g.adminOnly || user?.role === "ADMIN");
 
   return (
     <div className="flex h-full flex-col">
@@ -162,7 +170,7 @@ function SidebarNav({
 
       {/* Grouped navigation */}
       <nav className={cn("min-h-0 flex-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
-        {NAV_GROUPS.map((group, gi) => (
+        {visibleGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? (collapsed ? "mt-3" : "mt-6") : ""}>
             {group.label &&
               (collapsed ? (

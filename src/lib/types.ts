@@ -455,3 +455,25 @@ export type SalesListFilters = {
   page?: number;
   pageSize?: number;
 };
+
+// ---------------------------------------------------------------------------
+// System logs (audit trail)
+// ---------------------------------------------------------------------------
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string | null;
+  user: { name: string; email: string } | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  ip: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface LogFilterOptions {
+  actions: string[];
+  entityTypes: string[];
+  users: { id: string; name: string }[];
+}

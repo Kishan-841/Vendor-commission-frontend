@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AuthUser } from "./types";
-import { setToken } from "./api";
+import { api, setToken } from "./api";
 
 interface AuthState {
   user: AuthUser | null;
@@ -26,6 +26,9 @@ export const useAuth = create<AuthState>()(
         set({ token, user });
       },
       logout: () => {
+        // Fire-and-forget so logout is audited server-side (with IP); local
+        // state clears immediately either way.
+        api.post("/auth/logout").catch(() => {});
         setToken(null);
         set({ token: null, user: null });
       },
