@@ -23,33 +23,46 @@ import {
 } from "@/components/ui/select";
 
 const STATUSES: (CalculationStatus | "ALL")[] = ["ALL", "DRAFT", "SUBMITTED", "APPROVED", "REJECTED"];
-const PAGE_SIZE = 10;
+// Rows-per-page choices; backend caps pageSize at 100.
+const PAGE_SIZES = [10, 25, 50, 75, 100];
 
 export default function CalculationsPage() {
   const isAdmin = useRole() === "ADMIN";
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
 
-  // New filter ⇒ back to the first page.
+  // New filter or page size ⇒ back to the first page.
   useEffect(() => {
     setPage(1);
-  }, [status]);
+  }, [status, pageSize]);
 
   const { data, isLoading } = useCalculations({
     status: status === "ALL" ? undefined : status,
     page,
-    pageSize: PAGE_SIZE,
+    pageSize,
   });
 
   const columns = useMemo<ColumnDef<Calculation, unknown>[]>(
     () => [
       {
         header: "Vendor",
-        cell: ({ row }) => (
-          <span className="font-medium">{row.original.vendor?.vendorName ?? "—"}</span>
-        ),
+        cell: ({ row }) => {
+          const v = row.original.vendor;
+          if (!v) return <span className="text-muted-foreground">—</span>;
+          // Company is the primary line, vendor (person) under it — same as
+          // the vendors table.
+          return (
+            <div>
+              <div className="font-medium">{v.companyName || v.vendorName}</div>
+              {v.companyName && (
+                <div className="text-sm text-muted-foreground">{v.vendorName}</div>
+              )}
+            </div>
+          );
+        },
       },
       {
         header: "Month",
@@ -111,18 +124,36 @@ export default function CalculationsPage() {
         </Button>
       </PageHeader>
 
-      <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger className="max-w-[180px]">
-          <SelectValue placeholder="Filter by status" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {s === "ALL" ? "All statuses" : s.charAt(0) + s.slice(1).toLowerCase()}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="max-w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s === "ALL" ? "All statuses" : s.charAt(0) + s.slice(1).toLowerCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          Show
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger className="w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZES.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          per page
+        </div>
+      </div>
 
       <DataTable
         columns={columns}
@@ -130,7 +161,7 @@ export default function CalculationsPage() {
         isLoading={isLoading}
         emptyMessage="No calculations yet."
         page={data?.meta.page ?? page}
-        pageSize={data?.meta.pageSize ?? PAGE_SIZE}
+        pageSize={data?.meta.pageSize ?? pageSize}
         total={data?.meta.total ?? 0}
         totalPages={data?.meta.totalPages ?? 1}
         onPageChange={setPage}
