@@ -2,21 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useVendors, useDeleteVendor } from "@/hooks/use-vendors";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useRole } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
-import { VendorStatusBadge } from "@/components/status-badge";
+import { ZoneTypeBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { ApiError } from "@/lib/api";
-import { pct } from "@/lib/format";
+import { inr, pct } from "@/lib/format";
 import type { Vendor } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,12 +81,40 @@ export default function VendorsPage() {
         },
       },
       {
-        header: "Contact",
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {row.original.email || row.original.mobileNumber || "—"}
-          </span>
-        ),
+        header: "Zones",
+        cell: ({ row }) => {
+          // Renewal first, then New — same convention as the vendor form.
+          const assignments = [...(row.original.zoneAssignments ?? [])].sort((a, b) =>
+            a.zoneType === b.zoneType ? 0 : a.zoneType === "RENEWAL" ? -1 : 1,
+          );
+          if (assignments.length === 0) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1 font-normal">
+                  {assignments.length} {assignments.length === 1 ? "zone" : "zones"}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-72 max-h-72 overflow-y-auto">
+                {assignments.map((a) => (
+                  <div
+                    key={`${a.zoneId}-${a.zoneType}`}
+                    className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
+                  >
+                    <span className="min-w-0 truncate" title={a.zone?.name}>
+                      {a.zone?.name ?? "—"}{" "}
+                      <span className="font-medium">· {pct(a.commissionPercentage)}</span>
+                    </span>
+                    <ZoneTypeBadge type={a.zoneType} />
+                  </div>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
       {
         header: "AGR",
@@ -107,8 +140,14 @@ export default function VendorsPage() {
           ),
       },
       {
-        header: "Status",
-        cell: ({ row }) => <VendorStatusBadge status={row.original.status} />,
+        header: "Fixed Pay",
+        meta: { className: "text-right" },
+        cell: ({ row }) =>
+          row.original.fixedPayEnabled && row.original.fixedPayAmount ? (
+            <span>{inr(row.original.fixedPayAmount)}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
     ];
 
