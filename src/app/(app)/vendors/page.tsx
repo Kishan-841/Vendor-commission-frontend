@@ -35,6 +35,11 @@ import {
 
 const PAGE_SIZE = 10;
 
+// Hard cap for zone names in the zones dropdown so long names can't push the
+// commission % out of view. Full name stays available via title tooltip.
+const shortZone = (name: string) =>
+  name.length > 20 ? `${name.slice(0, 20).trimEnd()}…` : name;
+
 export default function VendorsPage() {
   const role = useRole();
   const isAdmin = role === "ADMIN";
@@ -104,8 +109,8 @@ export default function VendorsPage() {
                     key={`${a.zoneId}-${a.zoneType}`}
                     className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
                   >
-                    <span className="min-w-0 truncate" title={a.zone?.name}>
-                      {a.zone?.name ?? "—"}{" "}
+                    <span className="whitespace-nowrap" title={a.zone?.name}>
+                      {shortZone(a.zone?.name ?? "—")}{" "}
                       <span className="font-medium">· {pct(a.commissionPercentage)}</span>
                     </span>
                     <ZoneTypeBadge type={a.zoneType} />
