@@ -45,7 +45,7 @@ const schema = z
     agrPercentage: z.coerce.number().min(0).max(100),
     tdsPercentage: z.coerce.number().min(0).max(100),
     fixedPayEnabled: z.boolean(),
-    fixedPayAmount: z.coerce.number().min(0),
+    fixedPayAmount: z.coerce.number(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     bankName: z.string().optional(),
     accountHolder: z.string().optional(),
@@ -57,7 +57,8 @@ const schema = z
     message: "AGR % must be greater than 0",
     path: ["agrPercentage"],
   })
-  .refine((v) => !v.fixedPayEnabled || v.fixedPayAmount > 0, {
+  // Non-zero (negative allowed = a deduction); zero means turn the toggle off.
+  .refine((v) => !v.fixedPayEnabled || v.fixedPayAmount !== 0, {
     message: "Fixed pay amount is required",
     path: ["fixedPayAmount"],
   });
@@ -249,7 +250,7 @@ export function VendorEditor({ vendor }: { vendor?: Vendor | null }) {
         <div className="space-y-5">
           <ToggleRow
             title="Fixed Vendor Pay"
-            description="Adds a flat monthly amount to the calculated payable."
+            description="Adds (or deducts, if negative) a flat monthly amount to the calculated payable."
             checked={fixedPayEnabled}
             onChange={(v) => setValue("fixedPayEnabled", v)}
           />
@@ -257,18 +258,18 @@ export function VendorEditor({ vendor }: { vendor?: Vendor | null }) {
             <div className="grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
               <Field label="Fixed pay amount (₹)" error={errors.fixedPayAmount?.message}>
                 <Input
-                  type="number" step="0.01" placeholder="e.g. 25000"
+                  type="number" step="0.01" placeholder="e.g. 25000 or -5000"
                   className="tabular-nums" {...register("fixedPayAmount")}
                 />
               </Field>
-              {Number(fixedPayAmount) > 0 && (
+              {Number(fixedPayAmount) !== 0 && !Number.isNaN(Number(fixedPayAmount)) && (
                 <div className="flex items-end">
                   <p className="text-sm text-muted-foreground">
-                    Adds{" "}
+                    {Number(fixedPayAmount) > 0 ? "Adds " : "Deducts "}
                     <span className="font-medium text-foreground tabular-nums" style={{ fontFamily: "var(--font-geist-mono)" }}>
-                      {inr(Number(fixedPayAmount))}
+                      {inr(Math.abs(Number(fixedPayAmount)))}
                     </span>{" "}
-                    to every payout.
+                    {Number(fixedPayAmount) > 0 ? "to" : "from"} every payout.
                   </p>
                 </div>
               )}
