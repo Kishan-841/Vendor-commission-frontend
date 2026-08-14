@@ -98,7 +98,11 @@ export function CreateCalculationDialog({
     const taxBase = gross + fixedPay;
     const gst = (taxBase * gstRate) / 100;
     const tds = (taxBase * num(vendor?.tdsPercentage ?? 0)) / 100;
-    return { agr, afterAgr, gross, gst, tds, fixedPay, final: taxBase + gst - tds, gstRate };
+    // Mirror the backend: final payable is rounded to the whole rupee.
+    const exact = taxBase + gst - tds;
+    const final = Math.round(exact);
+    const roundOff = Math.round((final - exact) * 100) / 100;
+    return { agr, afterAgr, gross, gst, tds, fixedPay, final, roundOff, gstRate };
   }, [totalSales, rows, vendor]);
 
   const toggle = (key: string, selected: boolean) =>
@@ -224,11 +228,20 @@ export function CreateCalculationDialog({
             <PreviewCell label="AGR amount" value={inr(preview.agr)} />
             <PreviewCell label="Sales after AGR" value={inr(preview.afterAgr)} />
             <PreviewCell label="Gross commission" value={inr(preview.gross)} />
-            {preview.fixedPay > 0 && (
-              <PreviewCell label="Fixed vendor pay" value={"+ " + inr(preview.fixedPay)} />
+            {preview.fixedPay !== 0 && (
+              <PreviewCell
+                label="Fixed vendor pay"
+                value={(preview.fixedPay > 0 ? "+ " : "- ") + inr(Math.abs(preview.fixedPay))}
+              />
             )}
             <PreviewCell label={`GST (${preview.gstRate}%)`} value={inr(preview.gst)} />
             <PreviewCell label="TDS" value={"- " + inr(preview.tds)} />
+            {preview.roundOff !== 0 && (
+              <PreviewCell
+                label="Round off"
+                value={(preview.roundOff > 0 ? "+ " : "- ") + inr(Math.abs(preview.roundOff))}
+              />
+            )}
             <PreviewCell label="Final payable" value={inr(preview.final)} highlight />
           </div>
         </div>

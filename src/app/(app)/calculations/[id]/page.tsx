@@ -55,6 +55,18 @@ export default function CalculationDetailPage() {
     return <div className="text-muted-foreground">Loading…</div>;
   }
 
+  // Final payable is stored rounded to the whole rupee; the adjustment vs the
+  // paise-precise components is the "Round off" line. round2 kills fp noise.
+  const roundOff =
+    Math.round(
+      (Number(calc.finalPayable) -
+        (Number(calc.grossCommission) +
+          Number(calc.fixedPayAmount ?? 0) +
+          Number(calc.gstAmount) -
+          Number(calc.tdsAmount))) *
+        100,
+    ) / 100;
+
   const act = (action: "submit" | "approve" | "reject", note?: string) =>
     workflow.mutate(
       { id: calc.id, action, remarks: note },
@@ -174,12 +186,25 @@ export default function CalculationDetailPage() {
             </div>
             <Row label="Gross commission" value={inr(calc.grossCommission)} bold />
             {/* Fixed pay joins the base before taxes; GST/TDS are computed on
-                gross + fixed pay, so it reads above them. */}
-            {Number(calc.fixedPayAmount) > 0 && (
-              <Row label="Fixed vendor pay" value={"+ " + inr(calc.fixedPayAmount)} muted />
+                gross + fixed pay, so it reads above them. Negative = deduction. */}
+            {Number(calc.fixedPayAmount) !== 0 && (
+              <Row
+                label="Fixed vendor pay"
+                value={(Number(calc.fixedPayAmount) > 0 ? "+ " : "- ") + inr(Math.abs(Number(calc.fixedPayAmount)))}
+                muted
+              />
             )}
             <Row label={`GST (${pct(calc.gstPercentage)})`} value={"+ " + inr(calc.gstAmount)} muted />
             <Row label={`TDS (${pct(calc.tdsPercentage)})`} value={"- " + inr(calc.tdsAmount)} muted />
+            {/* Final payable is rounded to the whole rupee — surface the
+                adjustment so the rows above sum exactly to the final. */}
+            {roundOff !== 0 && (
+              <Row
+                label="Round off"
+                value={(roundOff > 0 ? "+ " : "- ") + inr(Math.abs(roundOff))}
+                muted
+              />
+            )}
             <Separator className="my-1" />
             <Row label="Final payable" value={inr(calc.finalPayable)} highlight />
           </CardContent>
