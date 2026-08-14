@@ -71,6 +71,29 @@ export function useDeleteCalculation() {
 
 // Best-effort bulk delete: locked (SUBMITTED/APPROVED) rows come back in
 // `skippedIds` instead of failing the whole batch.
+// Bulk workflow transitions: eligible rows move, the rest come back as skipped.
+export function useBulkSubmitCalculations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      api
+        .post<{ updatedCount: number; skippedIds: string[] }>("/calculations/bulk-submit", { ids })
+        .then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calculations"] }),
+  });
+}
+
+export function useBulkApproveCalculations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      api
+        .post<{ updatedCount: number; skippedIds: string[] }>("/calculations/bulk-approve", { ids })
+        .then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calculations"] }),
+  });
+}
+
 export function useBulkDeleteCalculations() {
   const qc = useQueryClient();
   return useMutation({

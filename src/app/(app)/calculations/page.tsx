@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Calculator, Search, Trash2 } from "lucide-react";
+import { Plus, Calculator, Check, Search, Send, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCalculations, useBulkDeleteCalculations } from "@/hooks/use-calculations";
+import {
+  useCalculations,
+  useBulkDeleteCalculations,
+  useBulkSubmitCalculations,
+  useBulkApproveCalculations,
+} from "@/hooks/use-calculations";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useRole } from "@/components/app-shell";
 import { CreateCalculationDialog } from "@/components/calculations/create-calculation-dialog";
@@ -43,6 +48,11 @@ const PAGE_SIZES = [10, 25, 50, 75, 100];
 
 // Mirrors the backend rule: SUBMITTED/APPROVED are locked (audit trail, bills).
 const isDeletable = (c: Calculation) => c.status === "DRAFT" || c.status === "REJECTED";
+// Which rows a role can act on in bulk: ADMIN can submit/delete DRAFT/REJECTED
+// and approve SUBMITTED; FINANCE can only approve SUBMITTED. APPROVED is
+// terminal — never selectable.
+const isSelectable = (c: Calculation, isAdmin: boolean) =>
+  isAdmin ? c.status !== "APPROVED" : c.status === "SUBMITTED";
 
 export default function CalculationsPage() {
   const isAdmin = useRole() === "ADMIN";
@@ -55,6 +65,7 @@ export default function CalculationsPage() {
   const [genOpen, setGenOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
 
   // New filter, search or page size ⇒ back to the first page.
   useEffect(() => {
@@ -75,9 +86,19 @@ export default function CalculationsPage() {
   });
 
   const bulkDelete = useBulkDeleteCalculations();
+  const bulkSubmit = useBulkSubmitCalculations();
+  const bulkApprove = useBulkApproveCalculations();
   const items = data?.items ?? [];
-  const pageDeletableIds = items.filter(isDeletable).map((c) => c.id);
-  const allSelected = pageDeletableIds.length > 0 && pageDeletableIds.every((id) => selected.has(id));
+  const pageSelectableIds = items.filter((c) => isSelectable(c, isAdmin)).map((c) => c.id);
+  const allSelected = pageSelectableIds.length > 0 && pageSelectableIds.every((id) => selected.has(id));
+
+  // Per-action subsets of the selection (each button acts only on the rows in
+  // the right state; the backend would skip the rest anyway).
+  const byStatus = (statuses: Calculation["status"][]) =>
+    items.filter((c) => selected.has(c.id) && statuses.includes(c.status)).map((c) => c.id);
+  const submitIds = byStatus(["DRAFT", "REJECTED"]);
+  const approveIds = byStatus(["SUBMITTED"]);
+  const deleteIds = byStatus(["DRAFT", "REJECTED"]);
 
   const toggleRow = (id: string, checked: boolean) => {
     setSelected((prev) => {
@@ -88,8 +109,37 @@ export default function CalculationsPage() {
     });
   };
 
+  const doBulkSubmit = () => {
+    bulkSubmit.mutate(submitIds, {
+      onSuccess: (res) => {
+        setSelected(new Set());
+        toast.success(
+          res.skippedIds.length > 0
+            ? `Submitted ${res.updatedCount}, skipped ${res.skippedIds.length}`
+            : `Submitted ${res.updatedCount} calculation${res.updatedCount === 1 ? "" : "s"} for approval`,
+        );
+      },
+      onError: (err) => toast.error(err instanceof ApiError ? err.message : "Submit failed"),
+    });
+  };
+
+  const doBulkApprove = () => {
+    bulkApprove.mutate(approveIds, {
+      onSuccess: (res) => {
+        setApproveConfirmOpen(false);
+        setSelected(new Set());
+        toast.success(
+          res.skippedIds.length > 0
+            ? `Approved ${res.updatedCount}, skipped ${res.skippedIds.length}`
+            : `Approved ${res.updatedCount} calculation${res.updatedCount === 1 ? "" : "s"}`,
+        );
+      },
+      onError: (err) => toast.error(err instanceof ApiError ? err.message : "Approve failed"),
+    });
+  };
+
   const confirmDelete = () => {
-    bulkDelete.mutate([...selected], {
+    bulkDelete.mutate(deleteIds, {
       onSuccess: (res) => {
         setConfirmOpen(false);
         setSelected(new Set());
@@ -107,44 +157,43 @@ export default function CalculationsPage() {
 
   const columns = useMemo<ColumnDef<Calculation, unknown>[]>(
     () => [
-      // Admin-only selection column. Locked rows (SUBMITTED/APPROVED) can't be
-      // ticked — the disabled checkbox's title explains why.
-      ...(isAdmin
-        ? ([
-            {
-              id: "select",
-              size: 44,
-              header: () => (
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(v) =>
-                    setSelected(v === true ? new Set(pageDeletableIds) : new Set())
-                  }
-                  aria-label="Select all deletable calculations on this page"
-                />
-              ),
-              cell: ({ row }) => {
-                const deletable = isDeletable(row.original);
-                return (
-                  <span
-                    title={
-                      deletable
-                        ? undefined
-                        : "Submitted/approved calculations can't be deleted"
-                    }
-                  >
-                    <Checkbox
-                      checked={selected.has(row.original.id)}
-                      disabled={!deletable}
-                      onCheckedChange={(v) => toggleRow(row.original.id, v === true)}
-                      aria-label="Select calculation"
-                    />
-                  </span>
-                );
-              },
-            },
-          ] satisfies ColumnDef<Calculation, unknown>[])
-        : []),
+      // Selection column for bulk actions. ADMIN can tick anything not yet
+      // approved (submit/approve/delete); FINANCE only SUBMITTED (approve).
+      // The disabled checkbox's title explains why a row can't be ticked.
+      {
+        id: "select",
+        size: 44,
+        header: () => (
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={(v) =>
+              setSelected(v === true ? new Set(pageSelectableIds) : new Set())
+            }
+            aria-label="Select all actionable calculations on this page"
+          />
+        ),
+        cell: ({ row }) => {
+          const selectable = isSelectable(row.original, isAdmin);
+          return (
+            <span
+              title={
+                selectable
+                  ? undefined
+                  : row.original.status === "APPROVED"
+                    ? "Approved calculations are locked"
+                    : "Only submitted calculations can be approved"
+              }
+            >
+              <Checkbox
+                checked={selected.has(row.original.id)}
+                disabled={!selectable}
+                onCheckedChange={(v) => toggleRow(row.original.id, v === true)}
+                aria-label="Select calculation"
+              />
+            </span>
+          );
+        },
+      },
       {
         header: "Vendor",
         cell: ({ row }) => {
@@ -246,9 +295,23 @@ export default function CalculationsPage() {
               ))}
             </SelectContent>
           </Select>
-          {isAdmin && selected.size > 0 && (
+          {isAdmin && submitIds.length > 0 && (
+            <Button onClick={doBulkSubmit} disabled={bulkSubmit.isPending}>
+              <Send className="h-4 w-4" /> Submit ({submitIds.length})
+            </Button>
+          )}
+          {approveIds.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setApproveConfirmOpen(true)}
+              disabled={bulkApprove.isPending}
+            >
+              <Check className="h-4 w-4" /> Approve ({approveIds.length})
+            </Button>
+          )}
+          {isAdmin && deleteIds.length > 0 && (
             <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-              <Trash2 className="h-4 w-4" /> Delete ({selected.size})
+              <Trash2 className="h-4 w-4" /> Delete ({deleteIds.length})
             </Button>
           )}
         </div>
@@ -289,7 +352,7 @@ export default function CalculationsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {selected.size} calculation{selected.size === 1 ? "" : "s"}?
+              Delete {deleteIds.length} calculation{deleteIds.length === 1 ? "" : "s"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the selected calculations and their zone breakdowns.
@@ -300,6 +363,26 @@ export default function CalculationsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} disabled={bulkDelete.isPending}>
               {bulkDelete.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Approve {approveIds.length} calculation{approveIds.length === 1 ? "" : "s"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Approved calculations are locked and become payable — they can no longer be
+              edited or deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={doBulkApprove} disabled={bulkApprove.isPending}>
+              {bulkApprove.isPending ? "Approving…" : "Approve"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
