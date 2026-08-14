@@ -57,7 +57,14 @@ export default function VendorsPage() {
     setPage(1);
   }, [search, pageSize]);
 
-  const { data, isLoading } = useVendors({ search, page, pageSize });
+  // Alphabetical by vendor name (backend default is newest-first).
+  const { data, isLoading } = useVendors({
+    search,
+    page,
+    pageSize,
+    sortBy: "vendorName",
+    sortDir: "asc",
+  });
   const del = useDeleteVendor();
 
   const confirmDelete = () => {

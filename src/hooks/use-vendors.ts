@@ -11,6 +11,8 @@ export type VendorFilters = {
   pageSize?: number;
   search?: string;
   status?: string;
+  sortBy?: "createdAt" | "vendorName";
+  sortDir?: "asc" | "desc";
 };
 
 export function useVendors(filters: VendorFilters = {}) {
