@@ -65,9 +65,11 @@ export default function VendorsPage() {
           const v = row.original;
           return (
             <div>
-              <div className="font-medium">{v.vendorName}</div>
+              {/* Company is the primary line; vendor (person) sits under it.
+                  Vendors without a company fall back to the vendor name on top. */}
+              <div className="font-medium">{v.companyName || v.vendorName}</div>
               {v.companyName && (
-                <div className="text-sm text-muted-foreground">{v.companyName}</div>
+                <div className="text-sm text-muted-foreground">{v.vendorName}</div>
               )}
             </div>
           );

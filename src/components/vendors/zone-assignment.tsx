@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import Link from "next/link";
 import { useMasterZones } from "@/hooks/use-zones";
 import { ZoneTypeBadge } from "@/components/status-badge";
@@ -32,6 +32,11 @@ export function ZoneAssignment({
   const byKey = useMemo(
     () => new Map(value.map((a) => [key(a.zoneId, a.zoneType), a])),
     [value],
+  );
+
+  const zoneName = useMemo(
+    () => new Map((zones.data ?? []).map((z) => [z.id, z.name])),
+    [zones.data],
   );
 
   const filtered = useMemo(() => {
@@ -83,6 +88,34 @@ export function ZoneAssignment({
         </div>
         <span className="text-sm text-muted-foreground">{value.length} selected</span>
       </div>
+
+      {/* Selected zones at a glance, so long lists don't hide what's picked.
+          Clicking × removes the assignment. */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((a) => (
+            <span
+              key={key(a.zoneId, a.zoneType)}
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+            >
+              <span className="max-w-[180px] truncate">
+                {zoneName.get(a.zoneId) ?? "…"}
+              </span>
+              <span className="text-muted-foreground">
+                · {a.zoneType === "NEW" ? "New" : "Renewal"}
+              </span>
+              <button
+                type="button"
+                onClick={() => toggle(a.zoneId, a.zoneType)}
+                className="rounded-full p-0.5 text-muted-foreground hover:bg-border hover:text-foreground"
+                aria-label={`Remove ${zoneName.get(a.zoneId) ?? "zone"} (${a.zoneType})`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         {types.map((type) => {
