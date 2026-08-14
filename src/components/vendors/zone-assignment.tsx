@@ -75,11 +75,6 @@ export function ZoneAssignment({
   // Renewal column sits left, New right (matching the chip grouping above).
   const types: ZoneType[] = ["RENEWAL", "NEW"];
 
-  // Chips grouped by type: Renewal first (left), then New — same order as the
-  // columns. Within a group, insertion order is kept.
-  const chips = [...value].sort((a, b) =>
-    a.zoneType === b.zoneType ? 0 : a.zoneType === "RENEWAL" ? -1 : 1,
-  );
 
   return (
     <div className="space-y-3">
@@ -97,34 +92,42 @@ export function ZoneAssignment({
       </div>
 
       {/* Selected zones at a glance, so long lists don't hide what's picked.
-          Clicking × removes the assignment. */}
+          Split per type in the same left/right halves as the columns below
+          (Renewal left, New right) so the two groups never mix. Clicking ×
+          removes the assignment. */}
       {value.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {chips.map((a) => (
-            <span
-              key={key(a.zoneId, a.zoneType)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
-                a.zoneType === "NEW"
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "bg-cyan/10 text-cyan border-cyan/30",
-              )}
-            >
-              <span className="max-w-[180px] truncate">
-                {zoneName.get(a.zoneId) ?? "…"}
-              </span>
-              <span className="opacity-70">
-                · {a.zoneType === "NEW" ? "New" : "Renewal"}
-              </span>
-              <button
-                type="button"
-                onClick={() => toggle(a.zoneId, a.zoneType)}
-                className="rounded-full p-0.5 opacity-70 hover:bg-foreground/10 hover:opacity-100"
-                aria-label={`Remove ${zoneName.get(a.zoneId) ?? "zone"} (${a.zoneType})`}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {types.map((type) => (
+            <div key={type} className="flex flex-wrap content-start gap-1.5">
+              {value
+                .filter((a) => a.zoneType === type)
+                .map((a) => (
+                  <span
+                    key={key(a.zoneId, a.zoneType)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                      type === "NEW"
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-cyan/10 text-cyan border-cyan/30",
+                    )}
+                  >
+                    <span className="max-w-[180px] truncate">
+                      {zoneName.get(a.zoneId) ?? "…"}
+                    </span>
+                    <span className="opacity-70">
+                      · {type === "NEW" ? "New" : "Renewal"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggle(a.zoneId, type)}
+                      className="rounded-full p-0.5 opacity-70 hover:bg-foreground/10 hover:opacity-100"
+                      aria-label={`Remove ${zoneName.get(a.zoneId) ?? "zone"} (${type})`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+            </div>
           ))}
         </div>
       )}
