@@ -20,6 +20,11 @@ export interface AssignmentInput {
 
 const key = (zoneId: string, type: ZoneType) => `${zoneId}|${type}`;
 
+// Chip labels are hard-capped so long zone names can't push a chip past its
+// half of the grid and overlap the other type's chips. Full name via title.
+const shortName = (name: string) =>
+  name.length > 18 ? `${name.slice(0, 18).trimEnd()}…` : name;
+
 export function ZoneAssignment({
   value,
   onChange,
@@ -104,16 +109,15 @@ export function ZoneAssignment({
                 .map((a) => (
                   <span
                     key={key(a.zoneId, a.zoneType)}
+                    title={zoneName.get(a.zoneId)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                      "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs",
                       type === "NEW"
                         ? "bg-primary/10 text-primary border-primary/30"
                         : "bg-cyan/10 text-cyan border-cyan/30",
                     )}
                   >
-                    <span className="max-w-[180px] truncate">
-                      {zoneName.get(a.zoneId) ?? "…"}
-                    </span>
+                    <span>{shortName(zoneName.get(a.zoneId) ?? "…")}</span>
                     <span className="opacity-70">
                       · {type === "NEW" ? "New" : "Renewal"}
                     </span>
