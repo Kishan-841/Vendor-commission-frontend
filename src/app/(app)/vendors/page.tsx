@@ -18,6 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,7 +35,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const PAGE_SIZE = 10;
+// Rows-per-page choices; backend caps pageSize at 100.
+const PAGE_SIZES = [10, 25, 50, 75, 100];
 
 // Hard cap for zone names in the zones dropdown so long names can't push the
 // commission % out of view. Full name stays available via title tooltip.
@@ -41,14 +49,15 @@ export default function VendorsPage() {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounce(searchInput, 350);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleting, setDeleting] = useState<Vendor | null>(null);
 
-  // New search term ⇒ back to the first page.
+  // New search term or page size ⇒ back to the first page.
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, pageSize]);
 
-  const { data, isLoading } = useVendors({ search, page, pageSize: PAGE_SIZE });
+  const { data, isLoading } = useVendors({ search, page, pageSize });
   const del = useDeleteVendor();
 
   const confirmDelete = () => {
@@ -121,6 +130,7 @@ export default function VendorsPage() {
       },
       {
         header: "AGR",
+        size: 70,
         meta: { className: "text-right" },
         cell: ({ row }) => (
           <span>{row.original.agrApplicable ? pct(row.original.agrPercentage) : "—"}</span>
@@ -128,11 +138,13 @@ export default function VendorsPage() {
       },
       {
         header: "TDS",
+        size: 70,
         meta: { className: "text-right" },
         cell: ({ row }) => <span>{pct(row.original.tdsPercentage)}</span>,
       },
       {
         header: "GST",
+        size: 70,
         cell: ({ row }) =>
           row.original.gstNumber ? (
             <Badge variant="outline" className="text-xs">
@@ -144,6 +156,7 @@ export default function VendorsPage() {
       },
       {
         header: "Fixed Pay",
+        size: 110,
         meta: { className: "text-right" },
         cell: ({ row }) =>
           row.original.fixedPayEnabled && row.original.fixedPayAmount ? (
@@ -190,14 +203,32 @@ export default function VendorsPage() {
         )}
       </PageHeader>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search vendors by name, email or PAN…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search vendors by name, email or PAN…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          Show
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger className="w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZES.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          per page
+        </div>
       </div>
 
       <DataTable
@@ -206,7 +237,7 @@ export default function VendorsPage() {
         isLoading={isLoading}
         emptyMessage="No vendors found."
         page={data?.meta.page ?? page}
-        pageSize={data?.meta.pageSize ?? PAGE_SIZE}
+        pageSize={data?.meta.pageSize ?? pageSize}
         total={data?.meta.total ?? 0}
         totalPages={data?.meta.totalPages ?? 1}
         onPageChange={setPage}
