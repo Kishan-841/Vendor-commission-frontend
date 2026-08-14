@@ -117,6 +117,9 @@ export function ZoneAssignment({
                     <span className="opacity-70">
                       · {type === "NEW" ? "New" : "Renewal"}
                     </span>
+                    {a.commissionPercentage !== "" && (
+                      <span className="font-medium">· {a.commissionPercentage}%</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => toggle(a.zoneId, type)}
