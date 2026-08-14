@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Calculator, Trash2 } from "lucide-react";
+import { Plus, Calculator, Search, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCalculations, useBulkDeleteCalculations } from "@/hooks/use-calculations";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useRole } from "@/components/app-shell";
 import { CreateCalculationDialog } from "@/components/calculations/create-calculation-dialog";
 import { CalculateDialog } from "@/components/calculations/calculate-dialog";
@@ -17,6 +18,7 @@ import { ApiError } from "@/lib/api";
 import type { Calculation, CalculationStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +47,8 @@ const isDeletable = (c: Calculation) => c.status === "DRAFT" || c.status === "RE
 export default function CalculationsPage() {
   const isAdmin = useRole() === "ADMIN";
   const [status, setStatus] = useState<string>("ALL");
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 350);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
@@ -52,19 +56,20 @@ export default function CalculationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // New filter or page size ⇒ back to the first page.
+  // New filter, search or page size ⇒ back to the first page.
   useEffect(() => {
     setPage(1);
-  }, [status, pageSize]);
+  }, [status, search, pageSize]);
 
   // Selection only ever refers to rows the user can currently see — clear it
   // whenever the visible slice changes so a delete can't hit off-screen rows.
   useEffect(() => {
     setSelected(new Set());
-  }, [status, page, pageSize]);
+  }, [status, search, page, pageSize]);
 
   const { data, isLoading } = useCalculations({
     status: status === "ALL" ? undefined : status,
+    search: search || undefined,
     page,
     pageSize,
   });
@@ -220,6 +225,15 @@ export default function CalculationsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search vendor or company…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="max-w-[180px]">
               <SelectValue placeholder="Filter by status" />

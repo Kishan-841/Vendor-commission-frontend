@@ -12,6 +12,7 @@ export type CalcFilters = {
   vendorId?: string;
   status?: string;
   month?: string;
+  search?: string;
 };
 
 export function useCalculations(filters: CalcFilters = {}) {
