@@ -173,11 +173,13 @@ export default function CalculationDetailPage() {
               </Table>
             </div>
             <Row label="Gross commission" value={inr(calc.grossCommission)} bold />
-            <Row label={`GST (${pct(calc.gstPercentage)})`} value={"+ " + inr(calc.gstAmount)} muted />
-            <Row label={`TDS (${pct(calc.tdsPercentage)})`} value={"- " + inr(calc.tdsAmount)} muted />
+            {/* Fixed pay joins the base before taxes; GST/TDS are computed on
+                gross + fixed pay, so it reads above them. */}
             {Number(calc.fixedPayAmount) > 0 && (
               <Row label="Fixed vendor pay" value={"+ " + inr(calc.fixedPayAmount)} muted />
             )}
+            <Row label={`GST (${pct(calc.gstPercentage)})`} value={"+ " + inr(calc.gstAmount)} muted />
+            <Row label={`TDS (${pct(calc.tdsPercentage)})`} value={"- " + inr(calc.tdsAmount)} muted />
             <Separator className="my-1" />
             <Row label="Final payable" value={inr(calc.finalPayable)} highlight />
           </CardContent>

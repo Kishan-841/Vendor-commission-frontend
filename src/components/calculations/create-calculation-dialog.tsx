@@ -93,10 +93,12 @@ export function CreateCalculationDialog({
       .filter((r) => r.selected)
       .reduce((s, r) => s + (afterAgr * num(r.commissionPercentage || 0)) / 100, 0);
     const gstRate = vendor?.gstNumber ? 18 : 0;
-    const gst = (gross * gstRate) / 100;
-    const tds = (gross * num(vendor?.tdsPercentage ?? 0)) / 100;
+    // Fixed pay joins the base before taxes: GST/TDS apply to gross + fixed pay.
     const fixedPay = vendor?.fixedPayEnabled ? num(vendor.fixedPayAmount ?? 0) : 0;
-    return { agr, afterAgr, gross, gst, tds, fixedPay, final: gross + gst - tds + fixedPay, gstRate };
+    const taxBase = gross + fixedPay;
+    const gst = (taxBase * gstRate) / 100;
+    const tds = (taxBase * num(vendor?.tdsPercentage ?? 0)) / 100;
+    return { agr, afterAgr, gross, gst, tds, fixedPay, final: taxBase + gst - tds, gstRate };
   }, [totalSales, rows, vendor]);
 
   const toggle = (key: string, selected: boolean) =>
@@ -222,11 +224,11 @@ export function CreateCalculationDialog({
             <PreviewCell label="AGR amount" value={inr(preview.agr)} />
             <PreviewCell label="Sales after AGR" value={inr(preview.afterAgr)} />
             <PreviewCell label="Gross commission" value={inr(preview.gross)} />
-            <PreviewCell label={`GST (${preview.gstRate}%)`} value={inr(preview.gst)} />
-            <PreviewCell label="TDS" value={"- " + inr(preview.tds)} />
             {preview.fixedPay > 0 && (
               <PreviewCell label="Fixed vendor pay" value={"+ " + inr(preview.fixedPay)} />
             )}
+            <PreviewCell label={`GST (${preview.gstRate}%)`} value={inr(preview.gst)} />
+            <PreviewCell label="TDS" value={"- " + inr(preview.tds)} />
             <PreviewCell label="Final payable" value={inr(preview.final)} highlight />
           </div>
         </div>
