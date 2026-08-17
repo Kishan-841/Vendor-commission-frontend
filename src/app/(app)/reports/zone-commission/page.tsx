@@ -38,7 +38,15 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-type SortKey = "zone" | "totalSales" | "commissionPercentage" | "commissionAmount" | "totalOrders";
+type SortKey =
+  | "zone"
+  | "newSales"
+  | "renewalSales"
+  | "totalSales"
+  | "newCommission"
+  | "renewalCommission"
+  | "commissionAmount"
+  | "netSales";
 
 export default function ZoneCommissionPage() {
   const months = useSalesMonths();
@@ -120,45 +128,53 @@ export default function ZoneCommissionPage() {
           cell: ({ row }) => <span className="font-medium">{row.original.zone}</span>,
         },
         {
+          id: "newSales",
+          header: () => sortHeader("New Sales", "newSales", true),
+          size: 140,
+          meta: { className: "text-right" },
+          cell: ({ row }) => money(row.original.newSales),
+        },
+        {
+          id: "renewalSales",
+          header: () => sortHeader("Renewal Sales", "renewalSales", true),
+          size: 140,
+          meta: { className: "text-right" },
+          cell: ({ row }) => money(row.original.renewalSales),
+        },
+        {
           id: "totalSales",
           header: () => sortHeader("Total Sales", "totalSales", true),
-          size: 150,
+          size: 140,
           meta: { className: "text-right" },
           cell: ({ row }) => money(row.original.totalSales),
         },
         {
-          id: "commissionPercentage",
-          header: () => sortHeader("Commission %", "commissionPercentage", true),
+          id: "newCommission",
+          header: () => sortHeader("New Comm.", "newCommission", true),
           size: 130,
           meta: { className: "text-right" },
-          cell: ({ row }) => (
-            <span className="tabular-nums" style={mono}>
-              {pct2(row.original.commissionPercentage)}
-            </span>
-          ),
+          cell: ({ row }) => money(row.original.newCommission),
+        },
+        {
+          id: "renewalCommission",
+          header: () => sortHeader("Renewal Comm.", "renewalCommission", true),
+          size: 140,
+          meta: { className: "text-right" },
+          cell: ({ row }) => money(row.original.renewalCommission),
         },
         {
           id: "commissionAmount",
-          header: () => sortHeader("Commission", "commissionAmount", true),
-          size: 150,
+          header: () => sortHeader("Total Comm.", "commissionAmount", true),
+          size: 140,
           meta: { className: "text-right" },
           cell: ({ row }) => money(row.original.commissionAmount),
         },
         {
-          id: "totalOrders",
-          header: () => sortHeader("Orders", "totalOrders", true),
-          size: 100,
-          meta: { className: "text-right" },
-          cell: ({ row }) => (
-            <span className="tabular-nums">{row.original.totalOrders.toLocaleString("en-IN")}</span>
-          ),
-        },
-        {
-          id: "averageOrderValue",
-          header: "Avg Order Value",
+          id: "netSales",
+          header: () => sortHeader("Net Sales", "netSales", true),
           size: 150,
           meta: { className: "text-right" },
-          cell: ({ row }) => money(row.original.averageOrderValue),
+          cell: ({ row }) => money(row.original.netSales),
         },
       ];
     },
@@ -197,12 +213,14 @@ export default function ZoneCommissionPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Zones" value={summary?.totalZones ?? 0} />
+        <StatCard label="New Sales" value={inr(summary?.newSales ?? 0)} />
+        <StatCard label="Renewal Sales" value={inr(summary?.renewalSales ?? 0)} />
         <StatCard label="Total Sales" value={inr(summary?.totalSales ?? 0)} />
         <StatCard label="Total Commission" value={inr(summary?.totalCommission ?? 0)} />
+        <StatCard label="Net Sales" value={inr(summary?.netSales ?? 0)} />
         <StatCard label="Avg Commission %" value={pct2(summary?.averageCommissionPercentage ?? 0)} />
-        <StatCard label="Total Orders" value={(summary?.totalOrders ?? 0).toLocaleString("en-IN")} />
       </div>
 
       <DataTable
@@ -215,6 +233,55 @@ export default function ZoneCommissionPage() {
             : "No commission data available for the selected month."
         }
       />
+
+      {/* New / renewal / overall totals across every column. */}
+      {summary && rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+          <span className="font-medium">Totals</span>
+          <span className="text-muted-foreground">
+            New sales{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.newSales)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            Renewal sales{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.renewalSales)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            Total sales{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.totalSales)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            New comm.{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.newCommission)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            Renewal comm.{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.renewalCommission)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            Total comm.{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.totalCommission)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            Net sales{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground" style={mono}>
+              {inr(summary.netSales)}
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

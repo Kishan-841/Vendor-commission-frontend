@@ -314,11 +314,13 @@ export interface DashboardStats {
 // Zone-wise commission report (per month).
 export interface ZoneCommissionRow {
   zone: string;
+  newSales: number;
+  renewalSales: number;
   totalSales: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  commissionPercentage: number;
-  commissionAmount: number;
+  newCommission: number;
+  renewalCommission: number;
+  commissionAmount: number; // total commission (both types)
+  netSales: number; // totalSales - commissionAmount
 }
 
 export interface ZoneCommissionReport {
@@ -326,9 +328,13 @@ export interface ZoneCommissionReport {
   rows: ZoneCommissionRow[];
   summary: {
     totalZones: number;
+    newSales: number;
+    renewalSales: number;
     totalSales: number;
+    newCommission: number;
+    renewalCommission: number;
     totalCommission: number;
-    totalOrders: number;
+    netSales: number;
     averageCommissionPercentage: number;
   };
 }
