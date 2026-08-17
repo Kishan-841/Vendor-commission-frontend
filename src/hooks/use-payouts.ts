@@ -7,7 +7,6 @@ import type {
   PayoutStatus,
   RecordPaymentInput,
   VendorLedger,
-  VendorPayoutDetail,
   VendorPayoutSummary,
 } from "@/lib/types";
 
@@ -40,14 +39,6 @@ export function usePayoutMonths() {
   return useQuery({
     queryKey: ["payout-months"],
     queryFn: () => api.get<string[]>("/payouts/months").then((r) => r.data),
-  });
-}
-
-export function useVendorPayoutDetail(vendorId: string) {
-  return useQuery({
-    queryKey: ["payouts", "vendor", vendorId],
-    queryFn: () => api.get<VendorPayoutDetail>(`/payouts/vendors/${vendorId}`).then((r) => r.data),
-    enabled: !!vendorId,
   });
 }
 

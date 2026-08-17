@@ -181,35 +181,6 @@ export interface PayoutPayment {
   createdAt: string;
 }
 
-// Approved calculation + its payments, as returned by the vendor detail.
-export interface PayoutCalculation extends Calculation {
-  paymentStatus: PayoutStatus;
-  paidAmount: string;
-  bill: { id: string; billNumber: string } | null;
-  payments: PayoutPayment[];
-}
-
-export interface VendorPayoutDetail {
-  vendor: {
-    id: string;
-    vendorName: string;
-    companyName: string | null;
-    status: Status;
-    email: string | null;
-    mobileNumber: string | null;
-  };
-  summary: {
-    totalCommission: number;
-    totalPaid: number;
-    totalPending: number;
-    paymentStatus: PayoutStatus;
-    calculationCount: number;
-    paymentCount: number;
-    lastPaymentDate: string | null;
-  };
-  calculations: PayoutCalculation[];
-}
-
 export interface RecordPaymentInput {
   paidAmount: number;
   paymentDate: string; // YYYY-MM-DD

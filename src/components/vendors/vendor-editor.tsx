@@ -124,12 +124,29 @@ export function VendorEditor({ vendor }: { vendor?: Vendor | null }) {
   const fixedPayEnabled = watch("fixedPayEnabled");
   const fixedPayAmount = watch("fixedPayAmount");
 
+  // The backend schemas use .trim().min(1).optional() — an optional field must
+  // be OMITTED when blank, never sent as "" (which fails min(1)).
+  const blankToUndefined = (v: string | undefined) => {
+    const t = v?.trim();
+    return t ? t : undefined;
+  };
+
   const onSubmit = (values: FormValues) => {
     const { bankName, accountHolder, accountNumber, ifscCode, branch, ...rest } = values;
-    const bankDetails = { bankName, accountHolder, accountNumber, ifscCode, branch };
-    const hasBank = Object.values(bankDetails).some((v) => v && v.trim() !== "");
+    // Only the filled bank keys go in the payload — partial details are valid.
+    const bankDetails = Object.fromEntries(
+      Object.entries({ bankName, accountHolder, accountNumber, ifscCode, branch })
+        .map(([k, v]) => [k, blankToUndefined(v)])
+        .filter(([, v]) => v !== undefined),
+    );
+    const hasBank = Object.keys(bankDetails).length > 0;
     const payload: Record<string, unknown> = {
       ...rest,
+      companyName: blankToUndefined(rest.companyName),
+      address: blankToUndefined(rest.address),
+      mobileNumber: blankToUndefined(rest.mobileNumber),
+      panNumber: blankToUndefined(rest.panNumber),
+      gstNumber: blankToUndefined(rest.gstNumber),
       email: rest.email || undefined,
       zoneAssignments: assignments.map((a) => ({
         zoneId: a.zoneId,

@@ -41,3 +41,23 @@ export function formatMonth(month: string): string {
   if (!y || !m) return month;
   return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
+
+// Derive the round-off a stored calculation carries: finalPayable is rounded
+// to the whole rupee while its components stay paise-precise. Single source
+// of truth for every "Round off" display line.
+export function deriveRoundOff(parts: {
+  finalPayable: unknown;
+  grossCommission: unknown;
+  fixedPayAmount?: unknown;
+  gstAmount: unknown;
+  tdsAmount: unknown;
+}): number {
+  const n = (v: unknown) => Number(v ?? 0);
+  return (
+    Math.round(
+      (n(parts.finalPayable) -
+        (n(parts.grossCommission) + n(parts.fixedPayAmount) + n(parts.gstAmount) - n(parts.tdsAmount))) *
+        100,
+    ) / 100
+  );
+}

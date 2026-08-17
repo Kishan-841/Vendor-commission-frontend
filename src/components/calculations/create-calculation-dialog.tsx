@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useVendorOptions, useVendor } from "@/hooks/use-vendors";
-import { useCreateCalculation } from "@/hooks/use-calculations";
+import { useCreateCalculation, useCalculationConfig } from "@/hooks/use-calculations";
 import { ApiError } from "@/lib/api";
 import { inr, num } from "@/lib/format";
 import { ZoneTypeBadge } from "@/components/status-badge";
@@ -49,6 +49,10 @@ export function CreateCalculationDialog({
   const router = useRouter();
   const vendors = useVendorOptions();
   const create = useCreateCalculation();
+  // GST default comes from backend Settings — mirroring it here keeps the
+  // preview honest if the rate is ever changed in the DB.
+  const config = useCalculationConfig();
+  const defaultGst = config.data?.defaultGstPercentage ?? 18;
 
   const [vendorId, setVendorId] = useState("");
   const [month, setMonth] = useState("");
@@ -92,7 +96,7 @@ export function CreateCalculationDialog({
     const gross = rows
       .filter((r) => r.selected)
       .reduce((s, r) => s + (afterAgr * num(r.commissionPercentage || 0)) / 100, 0);
-    const gstRate = vendor?.gstNumber ? 18 : 0;
+    const gstRate = vendor?.gstNumber ? defaultGst : 0;
     // Fixed pay joins the base before taxes: GST/TDS apply to gross + fixed pay.
     const fixedPay = vendor?.fixedPayEnabled ? num(vendor.fixedPayAmount ?? 0) : 0;
     const taxBase = gross + fixedPay;
@@ -103,7 +107,7 @@ export function CreateCalculationDialog({
     const final = Math.round(exact);
     const roundOff = Math.round((final - exact) * 100) / 100;
     return { agr, afterAgr, gross, gst, tds, fixedPay, final, roundOff, gstRate };
-  }, [totalSales, rows, vendor]);
+  }, [totalSales, rows, vendor, defaultGst]);
 
   const toggle = (key: string, selected: boolean) =>
     setRows((rs) => rs.map((r) => (rowKey(r.zoneId, r.zoneType) === key ? { ...r, selected } : r)));
@@ -184,7 +188,7 @@ export function CreateCalculationDialog({
             <div className="flex flex-wrap gap-4 rounded-md bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
               <span>AGR: {vendor.agrApplicable ? `${num(vendor.agrPercentage)}%` : "—"}</span>
               <span>TDS: {num(vendor.tdsPercentage)}%</span>
-              <span>GST: {vendor.gstNumber ? "18%" : "not applicable"}</span>
+              <span>GST: {vendor.gstNumber ? `${defaultGst}%` : "not applicable"}</span>
             </div>
           )}
 

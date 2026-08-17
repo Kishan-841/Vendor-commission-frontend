@@ -25,7 +25,7 @@ import { useGenerateBill } from "@/hooks/use-bills";
 import { useRole } from "@/components/app-shell";
 import { CalcStatusBadge, ZoneTypeBadge } from "@/components/status-badge";
 import { ApiError } from "@/lib/api";
-import { inr, pct, formatMonth, formatDateTime } from "@/lib/format";
+import { inr, pct, formatMonth, formatDateTime, deriveRoundOff } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -67,16 +67,8 @@ export default function CalculationDetailPage() {
   }
 
   // Final payable is stored rounded to the whole rupee; the adjustment vs the
-  // paise-precise components is the "Round off" line. round2 kills fp noise.
-  const roundOff =
-    Math.round(
-      (Number(calc.finalPayable) -
-        (Number(calc.grossCommission) +
-          Number(calc.fixedPayAmount ?? 0) +
-          Number(calc.gstAmount) -
-          Number(calc.tdsAmount))) *
-        100,
-    ) / 100;
+  // paise-precise components is the "Round off" line.
+  const roundOff = deriveRoundOff(calc);
 
   const act = (action: "submit" | "approve" | "reject", note?: string) =>
     workflow.mutate(

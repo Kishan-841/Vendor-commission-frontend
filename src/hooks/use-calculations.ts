@@ -25,6 +25,17 @@ export function useCalculations(filters: CalcFilters = {}) {
   });
 }
 
+// Backend defaults the calc dialog must mirror (GST rate comes from Settings,
+// never a hard-coded literal).
+export function useCalculationConfig() {
+  return useQuery({
+    queryKey: ["calculation-config"],
+    queryFn: () =>
+      api.get<{ defaultGstPercentage: number }>("/calculations/config").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // Distinct months that have calculations (desc), for the month filter.
 export function useCalculationMonths() {
   return useQuery({
