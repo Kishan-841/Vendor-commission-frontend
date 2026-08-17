@@ -25,6 +25,14 @@ export function useCalculations(filters: CalcFilters = {}) {
   });
 }
 
+// Distinct months that have calculations (desc), for the month filter.
+export function useCalculationMonths() {
+  return useQuery({
+    queryKey: ["calculation-months"],
+    queryFn: () => api.get<string[]>("/calculations/months").then((r) => r.data),
+  });
+}
+
 export function useCalculation(id: string | undefined) {
   return useQuery({
     queryKey: ["calculation", id],

@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   useCalculations,
+  useCalculationMonths,
   useBulkDeleteCalculations,
   useBulkSubmitCalculations,
   useBulkApproveCalculations,
@@ -57,6 +58,7 @@ const isSelectable = (c: Calculation, isAdmin: boolean) =>
 export default function CalculationsPage() {
   const isAdmin = useRole() === "ADMIN";
   const [status, setStatus] = useState<string>("ALL");
+  const [month, setMonth] = useState<string>("ALL");
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounce(searchInput, 350);
   const [page, setPage] = useState(1);
@@ -67,19 +69,22 @@ export default function CalculationsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
 
+  const months = useCalculationMonths();
+
   // New filter, search or page size ⇒ back to the first page.
   useEffect(() => {
     setPage(1);
-  }, [status, search, pageSize]);
+  }, [status, month, search, pageSize]);
 
   // Selection only ever refers to rows the user can currently see — clear it
   // whenever the visible slice changes so a delete can't hit off-screen rows.
   useEffect(() => {
     setSelected(new Set());
-  }, [status, search, page, pageSize]);
+  }, [status, month, search, page, pageSize]);
 
   const { data, isLoading } = useCalculations({
     status: status === "ALL" ? undefined : status,
+    month: month === "ALL" ? undefined : month,
     search: search || undefined,
     page,
     pageSize,
@@ -291,6 +296,19 @@ export default function CalculationsPage() {
               {STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s === "ALL" ? "All statuses" : s.charAt(0) + s.slice(1).toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="max-w-[170px]">
+              <SelectValue placeholder="Filter by month" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All months</SelectItem>
+              {months.data?.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {formatMonth(m)}
                 </SelectItem>
               ))}
             </SelectContent>
