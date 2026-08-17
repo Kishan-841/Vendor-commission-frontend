@@ -336,7 +336,23 @@ export default function VendorPayoutDetailPage({
                             </span>
                           </TableCell>
                           <TableCell className="font-medium">{e.reference}</TableCell>
-                          <TableCell className="text-muted-foreground">{e.description}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {e.description}
+                            {/* Detailed math behind the payout: commission + fixed + GST − TDS = final. */}
+                            {e.breakdown && (
+                              <div className="mt-0.5 text-xs tabular-nums" style={mono}>
+                                Comm {inr(e.breakdown.grossCommission)}
+                                {e.breakdown.fixedPayAmount !== 0 &&
+                                  ` ${e.breakdown.fixedPayAmount > 0 ? "+" : "−"} Fixed ${inr(Math.abs(e.breakdown.fixedPayAmount))}`}
+                                {e.breakdown.gstAmount !== 0 && ` + GST ${inr(e.breakdown.gstAmount)}`}
+                                {e.breakdown.tdsAmount !== 0 && ` − TDS ${inr(e.breakdown.tdsAmount)}`}
+                                {e.breakdown.roundOff !== 0 &&
+                                  ` ${e.breakdown.roundOff > 0 ? "+" : "−"} R/O ${inr(Math.abs(e.breakdown.roundOff))}`}
+                                {" = "}
+                                {inr(e.breakdown.finalPayable)}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums" style={mono}>{e.debit ? inr(e.debit) : "—"}</TableCell>
                           <TableCell className="text-right tabular-nums text-success" style={mono}>{e.credit ? inr(e.credit) : "—"}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium" style={mono}>{inr(e.balance)}</TableCell>

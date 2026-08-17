@@ -244,6 +244,16 @@ export interface LedgerReceipt {
   zones: string[];
 }
 
+// Commission math behind a Payout Generated ledger line.
+export interface LedgerBreakdown {
+  grossCommission: number;
+  fixedPayAmount: number;
+  gstAmount: number;
+  tdsAmount: number;
+  roundOff: number;
+  finalPayable: number;
+}
+
 export interface LedgerEntry {
   date: string;
   transactionType: "Payout Generated" | "Receipt";
@@ -252,6 +262,7 @@ export interface LedgerEntry {
   debit: number;
   credit: number;
   balance: number;
+  breakdown?: LedgerBreakdown; // present on Payout Generated entries
 }
 
 export interface VendorLedger {
