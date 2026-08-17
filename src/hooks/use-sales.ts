@@ -171,6 +171,36 @@ export function useSalesList(filters: SalesListFilters) {
   });
 }
 
+export interface SalesGroup {
+  zoneName: string;
+  salesType: "NEW" | "RENEWAL";
+  count: number;
+  totalPlanAmount: number;
+}
+
+interface SalesGroupedResult {
+  groups: SalesGroup[];
+  totalPlanAmount: number;
+}
+
+export type SalesGroupedFilters = {
+  month: string;
+  search?: string;
+  salesType?: "NEW" | "RENEWAL";
+  zone?: string;
+};
+
+// Zone+type aggregated summary; the per-row drill-down uses useSalesList
+// with a zone filter when a group is expanded.
+export function useSalesGrouped(filters: SalesGroupedFilters) {
+  return useQuery({
+    queryKey: ["sales-grouped", filters],
+    queryFn: () => api.get<SalesGroupedResult>("/sales/grouped", filters).then((r) => r.data),
+    enabled: !!filters.month,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Distinct zones/operators/sites/statuses within a month, for filter dropdowns.
 export function useSalesFilterOptions(month: string) {
   return useQuery({

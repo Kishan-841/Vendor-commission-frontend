@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Search, ArrowUp, ArrowDown, ArrowUpDown, FilterX, FileDown } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useSalesMonths, useSalesList, useSalesFilterOptions } from "@/hooks/use-sales";
+import { useSalesMonths, useSalesGrouped, useSalesFilterOptions } from "@/hooks/use-sales";
 import { useDebounce } from "@/hooks/use-debounce";
 import { PageHeader } from "@/components/page-header";
-import { DataTable } from "@/components/data-table";
+import { GroupedSalesTable } from "@/components/sales/grouped-sales-table";
 import { SalesDetailSheet } from "@/components/sales/sales-detail-sheet";
 import { ExportSalesDialog } from "@/components/sales/export-sales-dialog";
-import { ZoneTypeBadge } from "@/components/status-badge";
 import { inr, formatMonth } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SalesRecord, ZoneType } from "@/lib/types";
@@ -24,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const PAGE_SIZE = 50;
 const ALL = "__all__"; // shadcn Select forbids empty-string item values
 
 const mono = { fontFamily: "var(--font-geist-mono)" } as const;
@@ -37,7 +34,6 @@ export default function SalesSummaryPage() {
   const [salesType, setSalesType] = useState(ALL);
   const [sortBy, setSortBy] = useState("zoneName");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<SalesRecord | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -48,21 +44,14 @@ export default function SalesSummaryPage() {
     if (!month && months.data?.length) setMonth(months.data[0].month);
   }, [month, months.data]);
 
-  // Any filter change restarts pagination.
-  useEffect(() => {
-    setPage(1);
-  }, [month, search, zone, salesType]);
-
   const filterOptions = useSalesFilterOptions(month);
-  const sales = useSalesList({
+  // One entry per zone+type; the expanded per-zone rows are fetched lazily
+  // inside GroupedSalesTable.
+  const grouped = useSalesGrouped({
     month,
     search: search || undefined,
     zone: zone === ALL ? undefined : zone,
     salesType: salesType === ALL ? undefined : (salesType as ZoneType),
-    sortBy,
-    sortOrder,
-    page,
-    pageSize: PAGE_SIZE,
   });
 
   const hasFilters = searchInput !== "" || zone !== ALL || salesType !== ALL;
@@ -79,7 +68,6 @@ export default function SalesSummaryPage() {
       setSortBy(key);
       setSortOrder("asc");
     }
-    setPage(1);
   };
 
   const sortHeader = (label: string, key: string, alignRight?: boolean) => {
@@ -101,46 +89,19 @@ export default function SalesSummaryPage() {
     );
   };
 
-  const columns = useMemo<ColumnDef<SalesRecord, unknown>[]>(
-    () => [
-      {
-        id: "month",
-        header: "Month",
-        size: 130,
-        cell: () => formatMonth(month),
-      },
-      {
-        id: "salesType",
-        header: "Type",
-        size: 110,
-        cell: ({ row }) => <ZoneTypeBadge type={row.original.salesType} />,
-      },
-      {
-        id: "zoneName",
-        header: () => sortHeader("Zone", "zoneName"),
-        accessorKey: "zoneName",
-        cell: ({ row }) => row.original.zoneName,
-      },
-      {
-        id: "planAmount",
-        header: () => sortHeader("Plan amount", "planAmount", true),
-        size: 160,
-        meta: { className: "text-right" },
-        accessorKey: "planAmount",
-        cell: ({ row }) => (
-          <span className="font-mono tabular-nums" style={mono}>
-            {inr(row.original.planAmount)}
-          </span>
-        ),
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortBy, sortOrder, month],
-  );
+  // Client-side sort over the (bounded) group list.
+  const sortedGroups = useMemo(() => {
+    const groups = [...(grouped.data?.groups ?? [])];
+    const dir = sortOrder === "asc" ? 1 : -1;
+    groups.sort((a, b) => {
+      if (sortBy === "count") return (a.count - b.count) * dir;
+      if (sortBy === "totalPlanAmount") return (a.totalPlanAmount - b.totalPlanAmount) * dir;
+      return a.zoneName.localeCompare(b.zoneName) * dir || a.salesType.localeCompare(b.salesType);
+    });
+    return groups;
+  }, [grouped.data?.groups, sortBy, sortOrder]);
 
-  const total = sales.data?.total ?? 0;
-  const totalPlanAmount = sales.data?.totalPlanAmount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPlanAmount = grouped.data?.totalPlanAmount ?? 0;
   const noUploads = months.isSuccess && months.data.length === 0;
 
   return (
@@ -220,20 +181,19 @@ export default function SalesSummaryPage() {
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={sales.data?.items ?? []}
-        isLoading={sales.isLoading || (months.isLoading && !month)}
+      <GroupedSalesTable
+        // Remount on filter change so open groups collapse with the new set.
+        key={`${month}|${salesType}|${zone}|${search}`}
+        groups={sortedGroups}
+        isLoading={grouped.isLoading || (months.isLoading && !month)}
         emptyMessage={
           noUploads
             ? "No sales uploaded yet. Upload a monthly sheet under Sales Sheets."
             : "No sales records match the current filters."
         }
-        page={page}
-        pageSize={PAGE_SIZE}
-        total={total}
-        totalPages={totalPages}
-        onPageChange={setPage}
+        month={month}
+        search={search || undefined}
+        sortHeader={sortHeader}
         onRowClick={setSelected}
       />
 
