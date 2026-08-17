@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { LedgerReceipt, PayoutStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -201,6 +202,14 @@ export default function VendorPayoutDetailPage({
             </Card>
           </section>
 
+          {/* Receipts and Ledger live in separate tabs so each view stays focused. */}
+          <Tabs defaultValue="receipts" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="receipts">Receipts</TabsTrigger>
+              <TabsTrigger value="ledger">Ledger</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="receipts" className="space-y-8">
           {/* ── Receipt Entry ──────────────────────────────────────────── */}
           <section className="space-y-3">
             <SectionTitle>Receipt Entry</SectionTitle>
@@ -277,7 +286,9 @@ export default function VendorPayoutDetailPage({
               </div>
             </Card>
           </section>
+            </TabsContent>
 
+            <TabsContent value="ledger">
           {/* ── Ledger Summary ─────────────────────────────────────────── */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -364,6 +375,8 @@ export default function VendorPayoutDetailPage({
               </div>
             </Card>
           </section>
+            </TabsContent>
+          </Tabs>
         </>
       )}
 
