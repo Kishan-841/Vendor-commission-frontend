@@ -35,7 +35,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "admin@email.com", password: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   useEffect(() => {
