@@ -17,6 +17,13 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// 401 handler registered by the auth store (store.ts imports this module, so
+// importing the store here would be a circular import — hence the callback).
+let onUnauthorized: (() => void) | null = null;
+export function setOnUnauthorized(cb: () => void) {
+  onUnauthorized = cb;
+}
+
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -57,9 +64,12 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<{ da
 
   const res = await fetch(url.toString(), { method: opts.method ?? "GET", headers, body });
 
-  // 401 anywhere means the session is gone — clear it so the guard redirects.
-  if (res.status === 401) {
+  // 401 anywhere means the session is gone (expired/invalid token) — clear
+  // the token AND tell the auth store so the app-shell guard redirects to
+  // /login. Exception: /auth/login's own 401 just means wrong credentials.
+  if (res.status === 401 && path !== "/auth/login") {
     setToken(null);
+    onUnauthorized?.();
   }
 
   const json = await res.json().catch(() => ({}));
@@ -82,6 +92,10 @@ export const api = {
     const res = await fetch(API_URL + path, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
     if (!res.ok) throw new ApiError(res.status, "Download failed");
     return res.blob();
   },

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AuthUser } from "./types";
-import { api, setToken } from "./api";
+import { api, setToken, setOnUnauthorized } from "./api";
 
 interface AuthState {
   user: AuthUser | null;
@@ -44,3 +44,11 @@ export const useAuth = create<AuthState>()(
     },
   ),
 );
+
+// The api client saw a 401: the session is expired/invalid. Clear auth state
+// directly (NOT via logout() — that would POST /auth/logout with the dead
+// token and 401 again). The persisted state updates and the app-shell guard
+// redirects to /login.
+setOnUnauthorized(() => {
+  useAuth.setState({ token: null, user: null });
+});
