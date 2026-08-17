@@ -15,6 +15,7 @@ import {
   UploadCloud,
   Wallet,
   PieChart,
+  FileBarChart,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -58,6 +59,7 @@ const NAV_GROUPS: {
       { href: "/bills", label: "Bills", icon: FileText },
       { href: "/payouts", label: "Vendor Payouts", icon: Wallet },
       { href: "/reports/zone-commission", label: "Zone Commission", icon: PieChart },
+      { href: "/reports/vendor-commission", label: "Vendor Report", icon: FileBarChart },
     ],
   },
   {
