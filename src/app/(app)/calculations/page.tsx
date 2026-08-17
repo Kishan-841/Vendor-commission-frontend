@@ -47,13 +47,11 @@ const STATUSES: (CalculationStatus | "ALL")[] = ["ALL", "DRAFT", "SUBMITTED", "A
 // Rows-per-page choices; backend caps pageSize at 100.
 const PAGE_SIZES = [10, 25, 50, 75, 100];
 
-// Mirrors the backend rule: SUBMITTED/APPROVED are locked (audit trail, bills).
-const isDeletable = (c: Calculation) => c.status === "DRAFT" || c.status === "REJECTED";
-// Which rows a role can act on in bulk: ADMIN can submit/delete DRAFT/REJECTED
-// and approve SUBMITTED; FINANCE can only approve SUBMITTED. APPROVED is
-// terminal — never selectable.
+// Which rows a role can act on in bulk: ADMIN can act on ANY status (submit
+// DRAFT/REJECTED, approve SUBMITTED, delete anything — approved deletes also
+// remove the bill + receipts); FINANCE can only approve SUBMITTED.
 const isSelectable = (c: Calculation, isAdmin: boolean) =>
-  isAdmin ? c.status !== "APPROVED" : c.status === "SUBMITTED";
+  isAdmin ? true : c.status === "SUBMITTED";
 
 export default function CalculationsPage() {
   const isAdmin = useRole() === "ADMIN";
@@ -103,7 +101,8 @@ export default function CalculationsPage() {
     items.filter((c) => selected.has(c.id) && statuses.includes(c.status)).map((c) => c.id);
   const submitIds = byStatus(["DRAFT", "REJECTED"]);
   const approveIds = byStatus(["SUBMITTED"]);
-  const deleteIds = byStatus(["DRAFT", "REJECTED"]);
+  // Every selected row is deletable (admin); the backend cascades bills/receipts.
+  const deleteIds = isAdmin ? [...selected] : [];
 
   const toggleRow = (id: string, checked: boolean) => {
     setSelected((prev) => {
@@ -181,13 +180,7 @@ export default function CalculationsPage() {
           const selectable = isSelectable(row.original, isAdmin);
           return (
             <span
-              title={
-                selectable
-                  ? undefined
-                  : row.original.status === "APPROVED"
-                    ? "Approved calculations are locked"
-                    : "Only submitted calculations can be approved"
-              }
+              title={selectable ? undefined : "Only submitted calculations can be approved"}
             >
               <Checkbox
                 checked={selected.has(row.original.id)}
@@ -374,6 +367,15 @@ export default function CalculationsPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the selected calculations and their zone breakdowns.
+              {byStatus(["APPROVED"]).length > 0 && (
+                <>
+                  {" "}
+                  <span className="font-medium text-destructive">
+                    {byStatus(["APPROVED"]).length} of them are approved — their bills and all
+                    receipt entries will be deleted too.
+                  </span>
+                </>
+              )}{" "}
               This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

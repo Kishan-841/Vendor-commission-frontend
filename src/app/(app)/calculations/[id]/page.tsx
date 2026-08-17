@@ -4,6 +4,16 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Send, Check, X, FileText, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import toast from "react-hot-toast";
 import {
   useCalculation,
@@ -49,6 +59,7 @@ export default function CalculationDetailPage() {
   const genBill = useGenerateBill();
 
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [remarks, setRemarks] = useState("");
 
   if (isLoading || !calc) {
@@ -143,8 +154,8 @@ export default function CalculationDetailPage() {
               <Link href="/bills"><FileText className="h-4 w-4" /> View bill {calc.bill.billNumber}</Link>
             </Button>
           )}
-          {calc.status === "DRAFT" && isAdmin && (
-            <Button variant="ghost" size="icon" onClick={onDelete} title="Delete draft">
+          {isAdmin && (
+            <Button variant="ghost" size="icon" onClick={() => setDeleteOpen(true)} title="Delete calculation">
               <Trash2 className="h-4 w-4 text-red-500" />
             </Button>
           )}
@@ -252,6 +263,32 @@ export default function CalculationDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this calculation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the calculation and its zone breakdowns.
+              {calc.status === "APPROVED" && (
+                <span className="font-medium text-destructive">
+                  {" "}
+                  It is approved — {calc.bill ? `bill ${calc.bill.billNumber} and ` : ""}all its
+                  receipt entries will be deleted too.
+                </span>
+              )}{" "}
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onDelete} disabled={del.isPending}>
+              {del.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
