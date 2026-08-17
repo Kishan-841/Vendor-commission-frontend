@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useBills, downloadBillPdf } from "@/hooks/use-bills";
+import { useBills, downloadBillPdf, fetchBillPdf } from "@/hooks/use-bills";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
+import { DocumentViewerDialog, type ViewerDoc } from "@/components/document-viewer";
 import { ApiError } from "@/lib/api";
 import { inr, formatMonth, formatDateTime } from "@/lib/format";
 import type { Bill } from "@/lib/types";
@@ -16,6 +17,8 @@ const PAGE_SIZE = 10;
 
 export default function BillsPage() {
   const [page, setPage] = useState(1);
+  const [viewing, setViewing] = useState<ViewerDoc | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
   const { data, isLoading } = useBills({ page, pageSize: PAGE_SIZE });
 
   const download = async (bill: Bill) => {
@@ -23,6 +26,18 @@ export default function BillsPage() {
       await downloadBillPdf(bill);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Download failed");
+    }
+  };
+
+  const view = async (bill: Bill) => {
+    setLoadingId(bill.id);
+    try {
+      const { blob, fileName } = await fetchBillPdf(bill);
+      setViewing({ title: `Bill ${bill.billNumber}`, fileName, blob });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to load bill");
+    } finally {
+      setLoadingId(null);
     }
   };
 
@@ -77,16 +92,28 @@ export default function BillsPage() {
       {
         id: "download",
         header: "",
-        size: 112,
+        size: 150,
         meta: { className: "text-right" },
         cell: ({ row }) => (
-          <Button size="sm" variant="outline" onClick={() => download(row.original)}>
-            <Download className="h-4 w-4" /> PDF
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              title="View bill"
+              disabled={loadingId === row.original.id}
+              onClick={() => view(row.original)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => download(row.original)}>
+              <Download className="h-4 w-4" /> PDF
+            </Button>
+          </div>
         ),
       },
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingId drives the eye button state
+    [loadingId],
   );
 
   return (
@@ -104,6 +131,8 @@ export default function BillsPage() {
         totalPages={data?.meta.totalPages ?? 1}
         onPageChange={setPage}
       />
+
+      <DocumentViewerDialog doc={viewing} onOpenChange={(o) => !o && setViewing(null)} />
     </div>
   );
 }

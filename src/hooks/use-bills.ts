@@ -34,13 +34,19 @@ export function useGenerateBill() {
   });
 }
 
+// Fetch the PDF blob (with auth) for in-app preview or download.
+export async function fetchBillPdf(bill: Bill) {
+  const blob = await api.download(`/bills/${bill.id}/pdf`);
+  return { blob, fileName: `${bill.billNumber.replace(/[\\/]/g, "_")}.pdf` };
+}
+
 // Fetch the PDF blob (with auth) and trigger a browser download.
 export async function downloadBillPdf(bill: Bill) {
-  const blob = await api.download(`/bills/${bill.id}/pdf`);
+  const { blob, fileName } = await fetchBillPdf(bill);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${bill.billNumber.replace(/[\\/]/g, "_")}.pdf`;
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   a.remove();

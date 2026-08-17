@@ -108,15 +108,14 @@ export function useDeletePayment() {
   });
 }
 
-// Binary downloads (auth header attached by api.download).
-export async function downloadReceipt(paymentId: string) {
-  const blob = await api.download(`/payouts/payments/${paymentId}/receipt`);
-  return URL.createObjectURL(blob);
+// Binary downloads (auth header attached by api.download). Fetchers return
+// the raw blob so pages can preview in-app (DocumentViewerDialog) or save.
+export async function fetchReceiptPdf(paymentId: string) {
+  return api.download(`/payouts/payments/${paymentId}/receipt`);
 }
 
-export async function openReceiptAttachment(paymentId: string) {
-  const blob = await api.download(`/payouts/payments/${paymentId}/attachment`);
-  window.open(URL.createObjectURL(blob), "_blank");
+export async function fetchReceiptAttachment(paymentId: string) {
+  return api.download(`/payouts/payments/${paymentId}/attachment`);
 }
 
 export async function downloadLedgerPdf(vendorId: string, vendorName: string) {

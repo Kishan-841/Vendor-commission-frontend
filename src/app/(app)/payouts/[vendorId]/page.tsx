@@ -2,15 +2,16 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Receipt, Trash2, Pencil, Paperclip, FileDown } from "lucide-react";
+import { ArrowLeft, Eye, Trash2, Pencil, Paperclip, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useVendorLedger,
   useDeletePayment,
-  downloadReceipt,
-  openReceiptAttachment,
+  fetchReceiptPdf,
+  fetchReceiptAttachment,
   downloadLedgerPdf,
 } from "@/hooks/use-payouts";
+import { DocumentViewerDialog, type ViewerDoc } from "@/components/document-viewer";
 import { useRole } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { PayoutStatusBadge } from "@/components/payouts/payout-status-badge";
@@ -74,6 +75,29 @@ export default function VendorPayoutDetailPage({
   const [editing, setEditing] = useState<LedgerReceipt | null>(null);
   const [deleting, setDeleting] = useState<LedgerReceipt | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [viewing, setViewing] = useState<ViewerDoc | null>(null);
+
+  // In-app preview for the generated receipt PDF / uploaded attachment.
+  const viewReceipt = async (r: LedgerReceipt) => {
+    try {
+      const blob = await fetchReceiptPdf(r.id);
+      const name = r.receiptNumber ?? "receipt";
+      setViewing({ title: `Receipt ${name}`, fileName: `${name}.pdf`, blob });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to load receipt");
+    }
+  };
+
+  const viewAttachment = async (r: LedgerReceipt) => {
+    try {
+      const blob = await fetchReceiptAttachment(r.id);
+      const ext = blob.type === "application/pdf" ? "pdf" : (blob.type.split("/")[1] ?? "bin");
+      const name = r.receiptNumber ?? "receipt";
+      setViewing({ title: `Attachment — ${name}`, fileName: `${name}-attachment.${ext}`, blob });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to load attachment");
+    }
+  };
 
   const d = ledger.data;
 
@@ -228,12 +252,12 @@ export default function VendorPayoutDetailPage({
                           <TableCell>
                             <div className="flex items-center justify-end gap-0.5">
                               {r.hasAttachment && (
-                                <Button variant="ghost" size="icon" title="View attachment" onClick={() => openReceiptAttachment(r.id)}>
+                                <Button variant="ghost" size="icon" title="View attachment" onClick={() => viewAttachment(r)}>
                                   <Paperclip className="h-4 w-4" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" title="Download receipt PDF" onClick={async () => window.open(await downloadReceipt(r.id), "_blank")}>
-                                <Receipt className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" title="View receipt" onClick={() => viewReceipt(r)}>
+                                <Eye className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditing(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                                 <Pencil className="h-4 w-4" />
@@ -348,6 +372,8 @@ export default function VendorPayoutDetailPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DocumentViewerDialog doc={viewing} onOpenChange={(o) => !o && setViewing(null)} />
     </div>
   );
 }
